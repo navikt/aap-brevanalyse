@@ -42,54 +42,149 @@ Variablene må derfor omkodes til riktig type før de analyseres
 df.info()
 # %%
 df.dtypes  # se på hvilke datatyper pandas tror variablene består av
-# %%
-df.insert(
-    0, "analyse_ID", range(1, len(df) + 1)
-)  # legg til en ID for hvert svar for å aggregere
-# %%
-# variabler som inneholder fritekst
-df["brevtype_kort"] = df[
-    "Tenk på det siste brevet du fikk fra oss. Hva handlet brevet om?"
-]
-df["brevtype_kort"] = df["brevtype_kort"].apply(
-    lambda x: "Annet" if "Annet" in str(x) else x
-)  # bytt ut fritekst med kategori
-df["hvem_kort"] = df["Hvem fikk du hjelp fra?"]
-df["hvem_kort"] = df["hvem_kort"].apply(
-    lambda x: "Andre" if "Andre" in str(x) else x
-)  # bytt ut fritekst med kategori
-# %%
-int_cols = ["analyse_ID"] # int
 
-str_cols = [
-    "Er det noe mer du ønsker å fortelle oss i forbindelse med dette brevet? Vi ber deg om å ikke skrive personopplysninger. "
-]  # fritekst
 
-cat_cols = list(
-    set(df.columns) - set(int_cols) - set(str_cols)
-)  # Resterende er kategoriske variabler
 # %%
-# Sett riktig datatype per variabel
-df[cat_cols] = df[cat_cols].astype("category")
-df[int_cols] = df[int_cols].astype("Int64")
-df[str_cols] = df[str_cols].astype("string")
+def add_id(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Adds an identifier to each row in a pandas dataframe. Returns a copy of the modified dataset.
+    """
+    data = df.copy()
+    data.insert(0, "analyse_ID", range(1, len(df) + 1))
+    return data
+
+
 # %%
-# skill ut nominelle kategoriske
-nom_cols = [
-    "Har du nylig mottatt brev fra oss? Vil du svare på en 5 minutters spørreundersøkelse om brevet?",
-    "Tenk på det siste brevet du fikk fra oss. Hva handlet brevet om?",
-    "Hvor lang tid brukte du på å lese og forstå brevet? ",
-    "Tok du kontakt med NAV for å få hjelp til å forstå brevet?",
-    "Hvem fikk du hjelp fra?",
-    "brevtype_kort",
-    "hvem_kort",
-]
+def add_short_cols(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add columns with shorthand names for grouping answers when datatypes are mixed categorical data with open ended answers. Returns a copy of the modified dataset.
+    """
+    data = df.copy()
+    data["brevtype_kort"] = data[
+        "Tenk på det siste brevet du fikk fra oss. Hva handlet brevet om?"
+    ]
+    data["brevtype_kort"] = data["brevtype_kort"].apply(
+        lambda x: "Annet" if "Annet" in str(x) else x
+    )  # swap open ended answers with a categorical
+    data["hvem_kort"] = data["Hvem fikk du hjelp fra?"]
+    data["hvem_kort"] = data["hvem_kort"].apply(
+        lambda x: "Andre" if "Andre" in str(x) else x
+    )  # swap open ended answers with a categorical
+    return data
+
+
 # %%
-# skill ut ordinale kategoriske
-ord_cols = [q for q in cat_cols if q not in nom_cols]
+def label_col_types(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Label all the types of variables and return them as lists. Returns a copy of the modified dataset.
+
+    Parameters:
+    ------------
+    df = pd.Dataframe, required
+        The dataframe that will be labeled
+
+    Returns:
+    ---------
+    data = pd.Dataframe
+        The dataframe that will be returned
+    int_cols: list
+        List of variables that are integer
+    str_cols: list
+        List of variables that contain strings
+    cat_cols: list
+        List of all variables that are categorical
+    nom_cols: list
+        List of all variables that are nominal categoricals
+    ord_cols: list
+        List of all variables that are ordinal categoricals
+    open_cols: list
+        List of all variables containing open ended answers, both the string type and mixed categorical type
+    """
+    data = df.copy()
+    int_cols = ["analyse_ID"]  # int
+    str_cols = [
+        "Er det noe mer du ønsker å fortelle oss i forbindelse med dette brevet? Vi ber deg om å ikke skrive personopplysninger. "
+    ]  # open ended
+    cat_cols = list(
+        set(df.columns) - set(int_cols) - set(str_cols)
+    )  # Remainders are categorical
+    mixed_cols = [
+        "Tenk på det siste brevet du fikk fra oss. Hva handlet brevet om?",
+        "Hvem fikk du hjelp fra?",
+    ]
+
+    # Set datatype for each variable using the lists
+    data[cat_cols] = data[cat_cols].astype("category")
+    data[int_cols] = data[int_cols].astype("Int64")
+    data[str_cols] = data[str_cols].astype("string")
+
+    # nominal categoricals
+    nom_cols = [
+        "Har du nylig mottatt brev fra oss? Vil du svare på en 5 minutters spørreundersøkelse om brevet?",
+        "Tenk på det siste brevet du fikk fra oss. Hva handlet brevet om?",
+        "Hvor lang tid brukte du på å lese og forstå brevet? ",
+        "Tok du kontakt med NAV for å få hjelp til å forstå brevet?",
+        "Hvem fikk du hjelp fra?",
+        "brevtype_kort",
+        "hvem_kort",
+    ]
+
+    # ordinal categoricals
+    ord_cols = [q for q in cat_cols if q not in nom_cols]
+
+    # all open ended variables
+    open_cols = str_cols + mixed_cols
+
+    return data, int_cols, str_cols, cat_cols, nom_cols, ord_cols, open_cols
+
+
 # %%
-# sett rekkefølge for ordinale variabler
-_ = {
+def order_categoricals(
+    df: pd.DataFrame, ordering: dict, columns: list, categories_list: list
+) -> pd.DataFrame:
+    """
+    Add ordering to categorical variables using a dict. Returns a copy of the modified dataset.
+
+    Parameters:
+    ----------
+    df = pd.Dataframe, required
+        the dataframe to modify
+    ordering = dict, required
+        the dictionary containing mapping from original to new values
+    columns = list, required
+        the list of columns to modify
+    categories_list = list, required
+        the list of category labels to order the ordinal variables with
+
+    Returns:
+    --------
+    data: a dataframe with modified ordinal variables
+    """
+    data = df.copy()
+    # sett rekkefølge for ordinale variabler
+    _ = {
+        1: "Helt uenig",
+        2: "Uenig",
+        3: "Ikke enig eller uenig",
+        4: "Enig",
+        5: "Helt enig",
+        np.nan: np.nan,
+    }
+    data[columns] = data[columns].replace(ordering)
+    ord_sorted = pd.CategoricalDtype(
+        categories=categories_list,
+        ordered=True,
+    )
+    data[columns] = data[columns].astype(ord_sorted)
+    return data
+
+
+# %%
+# last funksjoner for prep
+df = add_id(df=df)
+df = add_short_cols(df=df)
+df, int_cols, str_cols, cat_cols, nom_cols, ord_cols, open_cols = label_col_types(df)
+ordering = {
     1: "Helt uenig",
     2: "Uenig",
     3: "Ikke enig eller uenig",
@@ -97,15 +192,16 @@ _ = {
     5: "Helt enig",
     np.nan: np.nan,
 }
-df[ord_cols] = df[ord_cols].replace(_)
-ord_sorted = pd.CategoricalDtype(
-    categories=["Helt uenig", "Uenig", "Ikke enig eller uenig", "Enig", "Helt enig"],
-    ordered=True,
+categories = ["Helt uenig", "Uenig", "Ikke enig eller uenig", "Enig", "Helt enig"]
+df = order_categoricals(
+    df=df, ordering=ordering, columns=ord_cols, categories_list=categories
 )
-df[ord_cols] = df[ord_cols].astype(ord_sorted)
 # %%
 # bekreft datatypene er riktige
 df.dtypes
+# %%
+# dropp variabler med fritekst
+df.drop(columns=open_cols, inplace=True)
 # %%
 # inspiser hver variabel for å sjekke sortering
 df["Brevet får frem hva jeg kan eller må gjøre etter å ha lest det."]
@@ -140,44 +236,28 @@ df[ord_cols].count()
 """
 Histogram per ordinal variabel
 """
-fig = px.histogram(
-    df, x=df[ord_cols[0]]
-).update_xaxes(categoryorder="total descending")
+fig = px.histogram(df, x=df[ord_cols[0]]).update_xaxes(categoryorder="total descending")
 fig.show()
 # %%
-fig = px.histogram(
-    df, x=df[ord_cols[1]]
-).update_xaxes(categoryorder="total descending")
+fig = px.histogram(df, x=df[ord_cols[1]]).update_xaxes(categoryorder="total descending")
 fig.show()
 # %%
-fig = px.histogram(
-    df, x=df[ord_cols[2]]
-).update_xaxes(categoryorder="total descending")
+fig = px.histogram(df, x=df[ord_cols[2]]).update_xaxes(categoryorder="total descending")
 fig.show()
 # %%
-fig = px.histogram(
-    df, x=df[ord_cols[3]]
-).update_xaxes(categoryorder="total descending")
+fig = px.histogram(df, x=df[ord_cols[3]]).update_xaxes(categoryorder="total descending")
 fig.show()
 # %%
-fig = px.histogram(
-    df, x=df[ord_cols[4]]
-).update_xaxes(categoryorder="total descending")
+fig = px.histogram(df, x=df[ord_cols[4]]).update_xaxes(categoryorder="total descending")
 fig.show()
 # %%
-fig = px.histogram(
-    df, x=df[ord_cols[5]]
-).update_xaxes(categoryorder="total descending")
+fig = px.histogram(df, x=df[ord_cols[5]]).update_xaxes(categoryorder="total descending")
 fig.show()
 # %%
-fig = px.histogram(
-    df, x=df[ord_cols[6]]
-).update_xaxes(categoryorder="total descending")
+fig = px.histogram(df, x=df[ord_cols[6]]).update_xaxes(categoryorder="total descending")
 fig.show()
 # %%
-fig = px.histogram(
-    df, x=df[ord_cols[7]]
-).update_xaxes(categoryorder="total descending")
+fig = px.histogram(df, x=df[ord_cols[7]]).update_xaxes(categoryorder="total descending")
 fig.show()
 # %%
 fig = px.histogram(
