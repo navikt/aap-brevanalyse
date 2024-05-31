@@ -48,6 +48,14 @@ df.dtypes  # se på hvilke datatyper pandas tror variablene består av
 def add_id(df: pd.DataFrame) -> pd.DataFrame:
     """
     Adds an identifier to each row in a pandas dataframe. Returns a copy of the modified dataset.
+
+    Parameters:
+    ----------
+    df: pd.Dataframe, required
+
+    Returns:
+    ---------
+    data: pd.Dataframe
     """
     data = df.copy()
     data.insert(0, "analyse_ID", range(1, len(df) + 1))
@@ -58,6 +66,14 @@ def add_id(df: pd.DataFrame) -> pd.DataFrame:
 def add_short_cols(df: pd.DataFrame) -> pd.DataFrame:
     """
     Add columns with shorthand names for grouping answers when datatypes are mixed categorical data with open ended answers. Returns a copy of the modified dataset.
+
+    Parameters:
+    ----------
+    df: pd.Dataframe, required
+
+    Returns:
+    ---------
+    data: pd.Dataframe
     """
     data = df.copy()
     data["brevtype_kort"] = data[
