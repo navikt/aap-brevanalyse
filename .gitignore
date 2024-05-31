@@ -1,5 +1,4 @@
 *.egg-info
-*.xlsx
 *.DS_store
 charts*
 .venv*
