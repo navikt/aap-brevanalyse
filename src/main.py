@@ -18,7 +18,7 @@ from scipy import stats
 
 
 # %%
-df = pd.read_excel("../oppsummering.xlsx", sheet_name="data_vasket")
+df = pd.read_excel("../ny_oppsummering.xlsx", sheet_name="data_vasket")
 
 # %%
 """
