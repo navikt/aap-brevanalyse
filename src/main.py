@@ -220,7 +220,7 @@ df.dtypes
 df.drop(columns=open_cols, inplace=True)
 # %%
 # skriv datasett
-df.to_excel("datasett.xlsx", index=False)
+df.to_excel("../datasett.xlsx", index=False)
 # %%
 # inspiser hver variabel for å sjekke sortering
 df["Brevet får frem hva jeg kan eller må gjøre etter å ha lest det."]
