@@ -407,3 +407,30 @@ for bars, color in zip(ax.containers[1:], ["white"] + ["black"] * 2 + ["white"] 
 ax.set_title((df["brevtype_kort"].unique()[3]), fontsize=16)
 plt.tight_layout()
 plt.show()
+# %%
+"""
+Hvilke variabler er korrelert? 
+"""
+# Polychoric correlation matrix for factor analysis
+# %%
+from semopy import polycorr
+
+# %%
+df = pd.read_excel("../ny_oppsummering.xlsx")  #
+df.dtypes
+# %%
+m = df.select_dtypes(np.number) 
+df[m.columns] = m.round().astype("Int64") # superfluous?
+# %%
+x = pd.Series.to_numpy(df["Jeg skjønner hvorfor jeg har mottatt dette brevet."])
+y = pd.Series.to_numpy(df["Brevet får frem hva jeg kan eller må gjøre etter å ha lest det."])
+# %%
+# drop nans
+x = x[~np.isnan(x)]
+y = y[~np.isnan(y)]
+# %%
+x = x.astype(np.int64)
+y = y.astype(np.int64)
+# %%
+polycorr.polychoric_corr(x=x, y=y)
+
