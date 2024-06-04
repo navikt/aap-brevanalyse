@@ -1,0 +1,143 @@
+---
+title: "Analyse med R for Brev"
+date: last-modified
+date-format: "[Sist oppdatert] D.M.YY."
+toc: true
+toc-title: Innhold
+number-sections: false
+execute:
+    enables: true
+    echo: false     # Vise kode eller ikke
+    warning: false  # Ikke vise "warnings" fra kodebloker
+format: 
+    html:
+        embed-resources: true
+        #code-background: true
+        #code-block-border-left: true
+        #code-fold: False         # Kode gjemt i en widget for hver kodeblokk
+        #code-tools: true        # Noen kodealternativer
+    #pdf: default
+    #docx: default
+
+jupyter: python3
+crossref:
+    fig-title: Figur     # (default is "Figure")
+    tbl-title: Tabell     # (default is "Table")
+    #title-delim: —     # (default is ":")
+
+    #Hvordan skal refereringen se ut i kompilert quarto:
+    fig-prefix: figur   # (default is "Figure")
+    tbl-prefix: tabell    # (default is "Table")
+    #ref-hyperlink: false # (default is true)
+#df-print: kable
+---
+
+
+
+
+<-- I denne qmd-filen er det enkel kode for å finne polykorisk korrelasjon mellom items, og kode for 
+ å gjennomføre cfa med pakken lavaan.
+ -->
+
+
+
+```{r}
+require("lavaan")
+require("psych")
+require("readxl")
+require("tidyr")
+require("dplyr")
+require("corrplot")
+
+```
+
+
+# last inn data:
+```{r}
+
+df <- as.data.frame(readxl::read_excel("data/datasett.xlsx", ))
+df %>% head()
+
+df[c(3:10)] %>% head()
+```
+
+```{r}
+df_ <- df[complete.cases(df[ , c(3:10)]), ] # Fjerne rader med missing
+df_mod <- df_[c(3:10)] #Lagre koplette svar i en df. Brukes i cfa
+
+# rekode spørsmål
+names_q = paste("q", seq(1:8), sep = "")
+names_list = df_mod %>% names()
+names(names_list) <- names_q
+names(df_mod) = names_q
+
+# Rekode svarkategorier som factor:
+df_mod = df_mod %>% mutate(q1 = recode(q1, "Helt uenig" = 1,  "Uenig" = 2, "Ikke enig eller uenig" = 3, "Enig" = 4, "Helt enig" = 5))
+df_mod = df_mod %>% mutate(q2 = recode(q2, "Helt uenig" = 1,  "Uenig" = 2, "Ikke enig eller uenig" = 3, "Enig" = 4, "Helt enig" = 5)) 
+df_mod = df_mod %>% mutate(q3 = recode(q3, "Helt uenig" = 1,  "Uenig" = 2, "Ikke enig eller uenig" = 3, "Enig" = 4, "Helt enig" = 5)) 
+df_mod = df_mod %>% mutate(q4 = recode(q4, "Helt uenig" = 1,  "Uenig" = 2, "Ikke enig eller uenig" = 3, "Enig" = 4, "Helt enig" = 5)) 
+df_mod = df_mod %>% mutate(q5 = recode(q5, "Helt uenig" = 1,  "Uenig" = 2, "Ikke enig eller uenig" = 3, "Enig" = 4, "Helt enig" = 5)) 
+df_mod = df_mod %>% mutate(q6 = recode(q6, "Helt uenig" = 1,  "Uenig" = 2, "Ikke enig eller uenig" = 3, "Enig" = 4, "Helt enig" = 5))
+df_mod = df_mod %>% mutate(q7 = recode(q7, "Helt uenig" = 1,  "Uenig" = 2, "Ikke enig eller uenig" = 3, "Enig" = 4, "Helt enig" = 5)) 
+df_mod = df_mod %>% mutate(q8 = recode(q8, "Helt uenig" = 1,  "Uenig" = 2, "Ikke enig eller uenig" = 3, "Enig" = 4, "Helt enig" = 5)) 
+
+df_mod %>% View()
+```
+
+
+
+# polykorisk 
+
+```{r}
+
+M = cor(df_mod) #Pearson correlation
+corrplot::corrplot.mixed(M, order = 'AOE')
+
+M_pol = psych::polychoric(df_mod) #polychoric correlation
+
+corrplot.mixed(M_pol$rho)
+```
+
+
+
+
+# CFA med lavaan
+
+```{r}
+
+model_alle_items = "
+## LatentVariabel =~ item1 + item2 + ...
+BrevOpp =~ q1 + #Jeg skjønner hvorfor jeg har mottatt dette brevet. 
+           q2 + #Brevet får frem hva jeg kan eller må gjøre etter å ha lest det.
+           q3 + #Det var lett å finne den informasjonen i brevet som er viktigst for meg.
+           q4 + #Overskriftene i brevet forteller meg hva teksten handler om.
+           q5 + #Jeg forstår alle ordene som er brukt i brevet.
+           q6 + #Brevet henvender seg direkte til meg som person. 
+           q7 + #Brevet inneholder ingen skrivefeil. 
+           q8   #Skriftstørrelsen i brevet passer meg. 
+
+"
+
+model_kort = "
+BrevOpp =~ q1  #Jeg skjønner hvorfor jeg har mottatt dette brevet. 
+           +q2   #Brevet får frem hva jeg kan eller må gjøre etter å ha lest det.
+           +q3  #Det var lett å finne den informasjonen i brevet som er viktigst for meg.
+           +q4
+           + q6
+           +q5   #Jeg forstår alle ordene som er brukt i brevet.
+           
+"
+
+fit <- lavaan::cfa(data = df_mod,
+           model = model_kort,
+           #estimator = "MLR",
+           #estimator = "ULSMV", ordered = TRUE #Anta ordnial skala
+           estimator = "WLSMV", ordered = TRUE #Anta ordnial skala, alternativ estiamtor
+           )
+
+
+summary(fit, fit.measures = TRUE, standardized = TRUE)
+
+
+```
+
