@@ -4,3 +4,7 @@
 ny_oppsummering.xlsx
 charts*
 .venv*
+renv/
+.Rproj.user
+.RData
+.Rhistory
