@@ -39,7 +39,11 @@ crossref:
  å gjennomføre cfa med pakken lavaan.
  -->
 
-
+```{r}
+#install.packages("renv")
+#renv::init()
+renv::restore()
+```
 
 ```{r}
 require("lavaan")
@@ -56,7 +60,7 @@ require("tidyverse")
 # last inn data:
 ```{r}
 
-df <- as.data.frame(readxl::read_excel("data/datasett.xlsx", ))
+df <- as.data.frame(readxl::read_excel("../datasett.xlsx", ))
 df %>% head()
 
 df[c(3:10)] %>% head()
