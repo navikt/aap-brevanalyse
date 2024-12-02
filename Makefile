@@ -1,5 +1,10 @@
 PYTHON=python3.10
 
+setup:
+	mkdir -p requirements # no error if exists
+	mkdir -p data
+	mkdir -p data/old
+
 install:
 	pip install --upgrade pip-tools pip setuptools
 	$(PYTHON) -m piptools compile -o requirements/main.txt pyproject.toml
