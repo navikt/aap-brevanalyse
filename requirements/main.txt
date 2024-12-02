@@ -8,6 +8,10 @@ attrs==23.2.0
     # via
     #   jsonschema
     #   referencing
+certifi==2024.8.30
+    # via requests
+charset-normalizer==3.4.0
+    # via requests
 contourpy==1.2.1
     # via matplotlib
 cycler==0.12.1
@@ -18,6 +22,8 @@ fastjsonschema==2.19.1
     # via nbformat
 fonttools==4.53.0
     # via matplotlib
+idna==3.10
+    # via requests
 joblib==1.4.2
     # via scikit-learn
 jsonschema==4.22.0
@@ -92,6 +98,8 @@ referencing==0.35.1
     # via
     #   jsonschema
     #   jsonschema-specifications
+requests==2.32.3
+    # via taskanalytics-data-wrapper
 researchpy==0.3.6
     # via aap-brev (pyproject.toml)
 rpds-py==0.18.1
@@ -122,13 +130,19 @@ statsmodels==0.14.2
     #   semopy
 sympy==1.12.1
     # via semopy
+taskanalytics-data-wrapper==0.2.1
+    # via aap-brev (pyproject.toml)
 tenacity==8.3.0
     # via plotly
 threadpoolctl==3.5.0
     # via scikit-learn
+tqdm==4.67.1
+    # via taskanalytics-data-wrapper
 traitlets==5.14.3
     # via
     #   jupyter-core
     #   nbformat
 tzdata==2024.1
     # via pandas
+urllib3==2.2.3
+    # via requests

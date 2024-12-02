@@ -21,7 +21,8 @@ dependencies = [
     "nbformat",
     "plot-likert",
     "seaborn",
-    "researchpy"
+    "researchpy",
+    "taskanalytics-data-wrapper"
 ]
 
 [project.optional-dependencies]
