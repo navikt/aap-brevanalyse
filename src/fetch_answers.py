@@ -10,7 +10,7 @@ password = os.getenv("ta_password")
 survey_id = os.getenv("ta_survey_id")
 # %%
 get_survey = task.download_survey(
-    username=email, password=password, survey_id=survey_id, filename_path="../data/new/survey.csv"
+    username=email, password=password, survey_id=survey_id, filename_path="data/new/survey.csv"
 )
 get_survey.status_code
 # %%
