@@ -16,6 +16,12 @@ Start miljøet
 source .venv/bin/activate
 ```
 
+Opprett mappene du trenger med
+
+```bash
+make setup
+```
+
 Installer pakker
 
 ```bash
@@ -32,4 +38,10 @@ Formater python-koden med black
 
 ```bash
 make format
+```
+
+Hent ferske data fra task analytics med
+
+```bash
+make gofetch
 ```
