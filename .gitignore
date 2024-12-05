@@ -10,3 +10,5 @@ renv/
 .RData
 .Rhistory
 .env
+
+utils_secret.py
