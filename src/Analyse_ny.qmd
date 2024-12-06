@@ -119,13 +119,17 @@ er_likert[1] = F
 
 # Sjekk svar på hvert likert spørmål.
 ## Aggregert alle brevkategorier
+
 ```{r}
 
 df_mod[, ((questions[1,] == "felles") & er_likert)]
 
+# Enkelt plotting av likert skala
 HH::likert(DBN~., b, positive.order=TRUE, as.percent = TRUE,
            main="At my child's school my child is safe.",
            xlab="percentage",ylab="School Code")
+
+
 df_mod[complete.cases(df_mod[, ((questions[1,] == "felles") & er_likert)]),] 
 ```
 
