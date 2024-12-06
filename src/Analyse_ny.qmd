@@ -80,14 +80,14 @@ df_ <- df_inn[,c(1,  #personID
                 21,#Alle # Cirka hvor lang tid tok det å forstå brevet?
                 29 # device
                 )]
-questions = df_[1,c(-1, -17)]
-questions
-names(questions) = c("Pre_Q1", "Pre_Q2", paste("Likert_Q", seq(1:10), sep = ""),paste("Post_Q", seq(1:3), sep = ""))
-names(df_)[c(-1, -17)] <- names(questions)
+questions = cbind(c("felles", "id"), rbind(
+            c("felles", "felles", "felles", "felles","felles", "felles", "utbetaling", "utbetaling", "avslag", "avslag",  "opplysninger", "opplysninger", "felles", "felles", "felles", "felles"), 
+            df_[1,c(-1, -17)]), 
+            c("felles", "device"))
+names(questions) = c("id", "Pre_Q1", "Pre_Q2", paste("Likert_Q", seq(1:10), sep = ""),paste("Post_Q", seq(1:3), sep = ""), "device")
+names(df_) <- names(questions)
 
 df <- df_[-1,]
-
-
 ```
 
 ```{r}
@@ -110,17 +110,23 @@ df_mod <- df_mod %>%  mutate(Likert_Q9 = recode(Likert_Q9, "Helt uenig" = 1, "Ue
 df_mod <- df_mod %>%  mutate(Likert_Q10 = recode(Likert_Q10, "Helt uenig" = 1, "Uenig" = 2, "Verken eller" = 3, "Enig" = 4, "Helt enig" = 5))
 
 
-df_mod %>% View()
+
 df_mod[1,4] %>% is.numeric()
 er_likert = sapply(df_mod[1,], is.numeric)
 er_likert[1] = F
+
 ```
 
 # Sjekk svar på hvert likert spørmål.
 ## Aggregert alle brevkategorier
 ```{r}
 
+df_mod[, ((questions[1,] == "felles") & er_likert)]
 
+HH::likert(DBN~., b, positive.order=TRUE, as.percent = TRUE,
+           main="At my child's school my child is safe.",
+           xlab="percentage",ylab="School Code")
+df_mod[complete.cases(df_mod[, ((questions[1,] == "felles") & er_likert)]),] 
 ```
 
 
@@ -132,8 +138,8 @@ er_likert[1] = F
 library(visdat)
 
 
-vis_miss(df_mod)
-
+vis_miss(df_mod[, ((questions[1,] == "felles") & er_likert)])
+df_mod[, ((questions[1,] == "felles") & er_likert)]
 ```
 
 ```{r}
