@@ -1,0 +1,188 @@
+---
+title: "Analyse med R for Brev"
+date: last-modified
+date-format: "[Sist oppdatert] D.M.YY."
+toc: true
+toc-title: Innhold
+number-sections: false
+execute:
+    enables: true
+    echo: false     # Vise kode eller ikke
+    warning: false  # Ikke vise "warnings" fra kodebloker
+format: 
+    html:
+        embed-resources: true
+        #code-background: true
+        #code-block-border-left: true
+        #code-fold: False         # Kode gjemt i en widget for hver kodeblokk
+        #code-tools: true        # Noen kodealternativer
+    #pdf: default
+    #docx: default
+
+jupyter: python3
+crossref:
+    fig-title: Figur     # (default is "Figure")
+    tbl-title: Tabell     # (default is "Table")
+    #title-delim: —     # (default is ":")
+
+    #Hvordan skal refereringen se ut i kompilert quarto:
+    fig-prefix: figur   # (default is "Figure")
+    tbl-prefix: tabell    # (default is "Table")
+    #ref-hyperlink: false # (default is true)
+#df-print: kable
+---
+
+
+
+
+<-- I denne qmd-filen er det enkel kode for å finne polykorisk korrelasjon mellom items, og kode for 
+ å gjennomføre cfa med pakken lavaan. Den er skrevet som et quarto-dokument for å forenkle arbeidsflyten i utforskning. Når analysen er endelig bør en skrives til et eget R-skript som kalles til en datastory som presenterer.
+ -->
+
+```{r}
+renv::restore()
+```
+
+```{r}
+require("lavaan")
+require("psych")
+require("readxl")
+require("tidyr")
+require("dplyr")
+require("corrplot")
+require("tidyverse")
+require("styler")
+```
+
+
+# last inn data:
+```{r}
+df_inn <- as.data.frame(read_csv("../data/new/survey.csv"))
+df_inn %>% head()
+
+
+#wrangle
+df_ <- df_inn[,c(1,  #personID
+                6,  #Tenk på det siste brevet du fikk fra oss om AAP. Hva handlet brevet om?
+                7,  #Har du lest brevet?
+                9,  # Det var tydelig for meg hva dette brevet handlet om
+                10, # Det var lett å finne den informasjonen som var viktig for meg
+                11, # Jeg forstod hva brevet handlet om etter å ha lest overskriften
+                12, # Brevet er skrevet slik jeg selv snakker
+                13, # Jeg forstår hva jeg må gjøre for å få utbetalt AAP etter å ha lest brevet
+                14, # Jeg forstår hvor lenge jeg mottar AAP etter å ha lest brevet
+                15, # Det var lett å forstå hvorfor jeg fikk avslag på AAP etter å ha lest brevet
+                16, # Det var lett å få oversikt over hvilken informasjon NAV har brukt for å avslå søknaden
+                17, # Det var tydelig i brevet hvem som skulle sende opplysningene NAV ba om
+                18, # Det var tydelig hvilke opplysninger NAV ba om
+                19, # Jeg måtte lese brevet flere ganger for å forstå innholdet
+                20,# Tok du kontakt med NAV for å få hjelp til å forstå brevet?
+                21, # Cirka hvor lang tid tok det å forstå brevet?
+                29 # device
+                )]
+questions = df_[1,c(-1, -17)]
+
+names(questions) = c("Pre_Q1", "Pre_Q2", paste("Likert_Q", seq(1:10), sep = ""),paste("Post_Q", seq(1:3), sep = ""))
+names(df_)[c(-1, -17)] <- names(questions)
+
+df <- df_[-1,]
+```
+
+```{r}
+
+
+
+## Mer wrangling
+# Rekode svarkategorier som factor:
+df_mod = df
+
+df_mod <- df_mod %>%  mutate(Likert_Q1 = recode(Likert_Q1, "Helt uenig" = 1, "Uenig" = 2, "Verken eller" = 3, "Enig" = 4, "Helt enig" = 5))
+df_mod <- df_mod %>%  mutate(Likert_Q2 = recode(Likert_Q2, "Helt uenig" = 1, "Uenig" = 2, "Verken eller" = 3, "Enig" = 4, "Helt enig" = 5))
+df_mod <- df_mod %>%  mutate(Likert_Q3 = recode(Likert_Q3, "Helt uenig" = 1, "Uenig" = 2, "Verken eller" = 3, "Enig" = 4, "Helt enig" = 5))
+df_mod <- df_mod %>%  mutate(Likert_Q4 = recode(Likert_Q4, "Helt uenig" = 1, "Uenig" = 2, "Verken eller" = 3, "Enig" = 4, "Helt enig" = 5))
+df_mod <- df_mod %>%  mutate(Likert_Q5 = recode(Likert_Q5, "Helt uenig" = 1, "Uenig" = 2, "Verken eller" = 3, "Enig" = 4, "Helt enig" = 5))
+df_mod <- df_mod %>%  mutate(Likert_Q6 = recode(Likert_Q6, "Helt uenig" = 1, "Uenig" = 2, "Verken eller" = 3, "Enig" = 4, "Helt enig" = 5))
+df_mod <- df_mod %>%  mutate(Likert_Q7 = recode(Likert_Q7, "Helt uenig" = 1, "Uenig" = 2, "Verken eller" = 3, "Enig" = 4, "Helt enig" = 5))
+df_mod <- df_mod %>%  mutate(Likert_Q8 = recode(Likert_Q8, "Helt uenig" = 1, "Uenig" = 2, "Verken eller" = 3, "Enig" = 4, "Helt enig" = 5))
+df_mod <- df_mod %>%  mutate(Likert_Q9 = recode(Likert_Q9, "Helt uenig" = 1, "Uenig" = 2, "Verken eller" = 3, "Enig" = 4, "Helt enig" = 5))
+df_mod <- df_mod %>%  mutate(Likert_Q10 = recode(Likert_Q10, "Helt uenig" = 1, "Uenig" = 2, "Verken eller" = 3, "Enig" = 4, "Helt enig" = 5))
+
+
+df_mod %>% View()
+df_mod[1,4] %>% is.numeric()
+er_likert = sapply(df_mod[1,], is.numeric)
+er_likert[1] = F
+```
+
+# Sjekk missing
+
+
+```{r}
+library(visdat)
+
+
+vis_miss(df_mod)
+
+```
+
+```{r}
+df_inn$answers.instead5 %>% unique()
+df_mod
+
+
+```
+
+# polykorisk 
+
+```{r}
+df_ = df_mod[complete.cases(df[er_likert]), ] # Fjerne rader med missing
+M <- cor(df_mod[er_likert]) # Pearson correlation
+
+corrplot::corrplot.mixed(M, order = "AOE")
+
+M_pol <- psych::polychoric(df_mod[er_likert]) # polychoric correlation
+
+corrplot.mixed(M_pol$rho)
+```
+
+
+
+
+# CFA med lavaan
+
+```{r}
+model_alle_items <- "
+## LatentVariabel =~ item1 + item2 + ...
+BrevOpp =~ q1 + #Jeg skjønner hvorfor jeg har mottatt dette brevet.
+           q2 + #Brevet får frem hva jeg kan eller må gjøre etter å ha lest det.
+           q3 + #Det var lett å finne den informasjonen i brevet som er viktigst for meg.
+           q4 + #Overskriftene i brevet forteller meg hva teksten handler om.
+           q5 + #Jeg forstår alle ordene som er brukt i brevet.
+           q6 + #Brevet henvender seg direkte til meg som person.
+           q7 + #Brevet inneholder ingen skrivefeil.
+           q8   #Skriftstørrelsen i brevet passer meg.
+
+"
+
+model_kort <- "
+BrevOpp =~ q1  #Jeg skjønner hvorfor jeg har mottatt dette brevet.
+           +q2 #Brevet får frem hva jeg kan eller må gjøre etter å ha lest det.
+           +q3 #Det var lett å finne den informasjonen i brevet som er viktigst for meg.
+           +q4 #Overskriftene i brevet forteller meg hva teksten handler om.
+           +q6 #Brevet henvender seg direkte til meg som person.
+           +q5 #Jeg forstår alle ordene som er brukt i brevet.
+
+"
+
+fit <- lavaan::cfa(
+  data = df_mod,
+  model = model_kort,
+  # estimator = "MLR", #Tilnærme 5 pkt likert til kontinuerlig skala
+  # estimator = "ULSMV", ordered = TRUE #Anta ordnial skala
+  estimator = "WLSMV", ordered = TRUE # Anta ordnial skala, alternativ estiamtor
+)
+
+
+summary(fit, fit.measures = TRUE, standardized = TRUE)
+```
+

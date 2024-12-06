@@ -14,7 +14,7 @@ if os.path.exists('.env'):
 # %%
 
 else:
-    import utils_Secrets
+    import utils_secrets
     hente_hemmeligheter("TaskAnalytics")
     email = os.getenv("user")
     password = os.getenv("password")
