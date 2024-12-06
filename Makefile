@@ -6,6 +6,7 @@ setup:
 	mkdir -p data
 	mkdir -p data/old
 	mkdir -p data/new
+	$(PYTHON) -m venv .venv # setup hidden venv dir
 
 install:
 	source $(VENV); \
