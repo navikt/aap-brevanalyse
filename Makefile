@@ -33,6 +33,6 @@ format:
 	black --exclude ^/.venv .
 
 gofetch:
-	rm data/new/survey.csv
+	rm -f data/new/survey.csv
 	source $(VENV); \
 	$(PYTHON) src/fetch_answers.py
