@@ -419,13 +419,14 @@ from semopy import polycorr
 df = pd.read_excel("../ny_oppsummering.xlsx")  #
 df.dtypes
 # %%
-m = df.select_dtypes(np.number) 
+m = df.select_dtypes(np.number)
 # %%
 x = pd.Series.to_numpy(df["Jeg skjønner hvorfor jeg har mottatt dette brevet."])
-y = pd.Series.to_numpy(df["Brevet får frem hva jeg kan eller må gjøre etter å ha lest det."])
+y = pd.Series.to_numpy(
+    df["Brevet får frem hva jeg kan eller må gjøre etter å ha lest det."]
+)
 # %%
 x = x.astype(np.int64)
 y = y.astype(np.int64)
 # %%
 polycorr.polychoric_corr(x=x, y=y)
-

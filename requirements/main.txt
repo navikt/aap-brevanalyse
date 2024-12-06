@@ -20,7 +20,7 @@ et-xmlfile==2.0.0
     # via openpyxl
 fastjsonschema==2.21.1
     # via nbformat
-fonttools==4.55.1
+fonttools==4.55.2
     # via matplotlib
 idna==3.10
     # via requests
