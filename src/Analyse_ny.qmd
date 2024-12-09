@@ -52,6 +52,7 @@ require("dplyr")
 require("corrplot")
 require("tidyverse")
 require("styler")
+require("HH")
 ```
 
 
@@ -88,6 +89,8 @@ names(questions) = c("id", "Pre_Q1", "Pre_Q2", paste("Likert_Q", seq(1:10), sep 
 names(df_) <- names(questions)
 
 df <- df_[-1,]
+
+
 ```
 
 ```{r}
@@ -112,9 +115,21 @@ df_mod <- df_mod %>%  mutate(Likert_Q10 = recode(Likert_Q10, "Helt uenig" = 1, "
 
 
 df_mod[1,4] %>% is.numeric()
-er_likert = sapply(df_mod[1,], is.numeric)
-er_likert[1] = F
+er_likert <- sapply(df_mod[1,], is.numeric)
+er_likert[1] <- F
 
+
+# Sette likert skala til ordered
+df[er_likert] <- as.data.frame(
+                   lapply(df[er_likert], function(x) factor(x, 
+                                                            levels = c("Helt uenig", 
+                                                                       "Uenig", 
+                                                                       "Verken eller", 
+                                                                       "Enig", 
+                                                                       "Helt enig"),
+                                                            ordered = TRUE
+                                                            )
+                        ))
 ```
 
 # Sjekk svar på hvert likert spørmål.
@@ -125,12 +140,58 @@ er_likert[1] = F
 df_mod[, ((questions[1,] == "felles") & er_likert)]
 
 # Enkelt plotting av likert skala
-HH::likert(DBN~., b, positive.order=TRUE, as.percent = TRUE,
-           main="At my child's school my child is safe.",
-           xlab="percentage",ylab="School Code")
 
 
-df_mod[complete.cases(df_mod[, ((questions[1,] == "felles") & er_likert)]),] 
+
+df_komplette_felles <- df[complete.cases(df[, ((questions[1,] == "felles") & er_likert)]),] 
+
+til_tabell <- function(col, tab0) {
+  tabell= as.data.frame(t(as.data.frame(table(col))))
+  names(tabell) <- tabell[1,]
+  tabell <- tabell[-1,]
+  
+  tabell
+}
+tab <- til_tabell(df_komplette_felles[, c(4)], NULL)
+
+for (col in df_komplette_felles[, c(5:7)]){
+  tab_var <- til_tabell(col)
+  tab <- rbind(tab, tab_var)
+}
+tab$q_nr = names(df_komplette_felles[, c(4:7)])
+row.names(tab) = NULL
+#tab$q = questions[2, names(df_komplette_felles[, c(4:7)])]
+
+
+
+
+```
+
+```{r}
+dd <- df_mod[er_likert] %>% psych::describe()
+dd[, c("n", "mean", "sd", "median", "min", "max", "skew", "kurtosis")]
+```
+
+```{r}
+# calculate the mean & SD and save them as objects so they can be called upon
+# when creating our vertical lines
+
+
+mean.weight <- with(df_mod, mean(Likert_Q4, na.rm = T))
+sd.weight <- with(df_mod, sd(Likert_Q4, na.rm = T))
+
+# plot our histogram
+with(df_mod[er_likert], hist(Likert_Q4,xlim = c(0,6),ylim = c(0,750), xaxs= "i", yaxs="i"))
+# add vertical lines for the mean and 1 sd above and below the mean
+abline(v= mean.weight, lty=1, lwd=3,col="blue")
+abline(v= mean.weight - (sd.weight), lty=2, lwd=1, col="red")
+abline(v= mean.weight + (sd.weight), lty=2, lwd=1, col="red") 
+# add our legend
+legend("topright",             # specify location
+       legend=c("Mean", "Mean +/- SD"), # specify contents of legend
+       col=c("blue","red"),    # specify colours in order of legend contents
+       lwd=c(3,1),             # specify line widths in order
+       lty=c(1,2))             # specify line types in order
 ```
 
 
@@ -147,8 +208,6 @@ df_mod[, ((questions[1,] == "felles") & er_likert)]
 ```
 
 ```{r}
-df_inn$answers.instead5 %>% unique()
-df_mod
 
 
 ```
@@ -156,54 +215,71 @@ df_mod
 # polykorisk 
 
 ```{r}
-df_ = df_mod[complete.cases(df[er_likert]), ] # Fjerne rader med missing
-M <- cor(df_mod[er_likert]) # Pearson correlation
+df_komplette_num <- df_mod[complete.cases(df_mod[, ((questions[1,] == "felles") & er_likert)]),] 
+
+M <- cor(df_komplette_num[,c(4:7)]) # Pearson correlation
 
 corrplot::corrplot.mixed(M, order = "AOE")
 
-M_pol <- psych::polychoric(df_mod[er_likert]) # polychoric correlation
+M_pol <- psych::polychoric(df_komplette_num[,c(4:7)]) # polychoric correlation
 
 corrplot.mixed(M_pol$rho)
 ```
 
+# Parallell analysis
+
+```{r}
+fa.parallel(df_komplette_num[,c(4:7)] , error.bars = T, se.bars = T)
+```
 
 
 
 # CFA med lavaan
 
 ```{r}
-model_alle_items <- "
+model_1 <- "
 ## LatentVariabel =~ item1 + item2 + ...
-BrevOpp =~ q1 + #Jeg skjønner hvorfor jeg har mottatt dette brevet.
-           q2 + #Brevet får frem hva jeg kan eller må gjøre etter å ha lest det.
-           q3 + #Det var lett å finne den informasjonen i brevet som er viktigst for meg.
-           q4 + #Overskriftene i brevet forteller meg hva teksten handler om.
-           q5 + #Jeg forstår alle ordene som er brukt i brevet.
-           q6 + #Brevet henvender seg direkte til meg som person.
-           q7 + #Brevet inneholder ingen skrivefeil.
-           q8   #Skriftstørrelsen i brevet passer meg.
-
-"
-
-model_kort <- "
-BrevOpp =~ q1  #Jeg skjønner hvorfor jeg har mottatt dette brevet.
-           +q2 #Brevet får frem hva jeg kan eller må gjøre etter å ha lest det.
-           +q3 #Det var lett å finne den informasjonen i brevet som er viktigst for meg.
-           +q4 #Overskriftene i brevet forteller meg hva teksten handler om.
-           +q6 #Brevet henvender seg direkte til meg som person.
-           +q5 #Jeg forstår alle ordene som er brukt i brevet.
-
+BrevOpp =~ Likert_Q1 + #Det var tydelig for meg hva dette brevet handlet om
+           Likert_Q2 + #Det var lett å finne den informasjonen som var viktig for meg
+           Likert_Q3 + #Jeg forstod hva brevet handlet om etter å ha lest overskriften
+           Likert_Q4 + #Brevet er skrevet slik jeg selv snakker
 "
 
 fit <- lavaan::cfa(
-  data = df_mod,
-  model = model_kort,
+  data = df_komplette_num,
+  model = model_1,
   # estimator = "MLR", #Tilnærme 5 pkt likert til kontinuerlig skala
-  # estimator = "ULSMV", ordered = TRUE #Anta ordnial skala
-  estimator = "WLSMV", ordered = TRUE # Anta ordnial skala, alternativ estiamtor
+   estimator = "ULSMV", ordered = TRUE #Anta ordnial skala
+  #estimator = "WLSMV", ordered = TRUE # Anta ordnial skala, alternativ estiamtor
 )
 
 
 summary(fit, fit.measures = TRUE, standardized = TRUE)
+```
+Fra output:
+``` 
+Robust Comparative Fit Index (CFI)                         0.994
+Robust Tucker-Lewis Index (TLI)                            0.981
+```
+
+Dette kjører meget bra. Det er en underliggende faktor alle brevkategorier. Gjenstår å se på multiple groups, med brevkategori som variabel for gruppetilhørighet. 
+
+
+#logistic regression with probit-link
+
+[Sjekk ut hvis det er nyttig.]
+```{r}
+model_1 <- "
+## LatentVariabel =~ item1 + item2 + ...
+BrevOpp =~ Likert_Q1 + #Det var tydelig for meg hva dette brevet handlet om
+           Likert_Q2 + #Det var lett å finne den informasjonen som var viktig for meg
+           Likert_Q3 + #Jeg forstod hva brevet handlet om etter å ha lest overskriften
+           Likert_Q4 + #Brevet er skrevet slik jeg selv snakker
+Post_Q2 ~ 1+ BrevOpp   #Tok du kontakt med NAV for å få hjelp til å forstå brevet?"
+
+fit <- sem(model_1, data=df_komplette_num[,c(4:7)], ordered=TRUE)
+summary(fit, fit.measures = TRUE, standardized = TRUE)
+
+
 ```
 
