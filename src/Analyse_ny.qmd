@@ -267,8 +267,9 @@ Dette kjører meget bra. Det er en underliggende faktor alle brevkategorier. Gje
 
 #logistic regression with probit-link
 
-[Sjekk ut hvis det er nyttig.]
-```{r}
+
+```{r include = FALSE}
+#[Sjekk ut hvis det er nyttig.]
 model_1 <- "
 ## LatentVariabel =~ item1 + item2 + ...
 BrevOpp =~ Likert_Q1 + #Det var tydelig for meg hva dette brevet handlet om
