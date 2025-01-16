@@ -528,7 +528,7 @@ for spm in spørsmål_liste:
                     ),
                     text=df_plot.loc[df_plot["Spørsmål"] == spm,"mean"].round(1),
                     textposition="middle center",
-                    textfont={"size":10, "color":"white"},
+                    textfont={"size":8, "color":"white"},
                     name=df_plot["Tenk på det siste brevet du fikk fra oss om AAP. Hva handlet brevet om?"].values[0],
                     hovertemplate = "%{x:.3s} ",
                     showlegend=False
@@ -591,13 +591,14 @@ for i in range(1, nrows*ncols+1, ncols):
          #   tickangle= 45
         )
 if ncols == 2:
+    tid_ticks = [5, 15, 20, 25, 30,35, 40,45, 60, 90]
     #oppdatere synlighet av x-akser for kolonne 2
     for i in range(2, nrows*ncols+1, 2):
         fig_likert.layout["xaxis" + str(i)].update(
             showticklabels = True, 
             tickmode= "array",
-            tickvals= [k for k in range(1,6)],
-            ticktext= [f"{k+1} - {likert}" for k, likert in enumerate   (['Helt<br>uenig', 'Uenig', 'Verken<br>eller', 'Enig',     'Helt<br>enig'])],
+            tickvals= tid_ticks,
+            ticktext= [f"{m} minutter" for m in tid_ticks[:-1]] + ["Mer enn en time"],
             minor_ticks= "",
             tickangle= 45
         )
