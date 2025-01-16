@@ -145,7 +145,25 @@ fig.update_xaxes(
     ticklabelmode="period", 
     dtick="M1", 
     tickformat="%d %b \n%Y")
-fig.update_layout(barmode='overlay')
+
+fig.update_layout(barmode='overlay',
+    title=dict(
+        text="Antall svar per uke og kumulativt"
+    ),
+    xaxis=dict(
+        title=dict(
+            text="Dato"
+        )
+    ),
+    yaxis=dict(
+        title=dict(
+            text="Antall svar per uke"
+        )),
+    yaxis2=dict(
+        title=dict(
+            text="Antall svar totalt"
+        ))
+    )
 fig['layout']['yaxis2']['showgrid'] = False
 
 fig.show()
