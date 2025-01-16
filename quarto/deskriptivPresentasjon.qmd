@@ -1,0 +1,594 @@
+---
+title: "Deskriptiv analyse med Python"
+format:
+  html:
+    code-fold: False
+    echo: False
+    plotly-connected: true
+---
+
+
+
+```{python}
+import pandas as pd
+from pandas.api.types import CategoricalDtype
+import numpy as np
+import datetime as dt
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import os
+import textwrap
+import datetime
+
+os.chdir("/Users/anderslauvland/DS_AAP/aap-brevanalyse") #Må velge riktig path for å laste inn moduler fra src. Finnes det en bedre måte?
+import src.data_clean, src.lag_oppsummering, src.utils
+
+
+today = datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S')
+```
+
+```{python}
+#| include: false
+#| label: plot-funcs
+
+#Funksjoner som brukes til plotting
+# Slett null-rader:
+def dropp_null_rader(df):
+    
+    df = df.reset_index(drop=True) #Forsikre om unike indekser
+    drop_indekser = df.loc[df["Totalt svar"] == 0,:].index
+    return df.drop(index = drop_indekser, axis = 0)
+
+
+def initier_subplot(
+    spørsmål_liste, 
+    df_in:pd.DataFrame,
+    bool_vis_gjennomsnitt: bool = True,
+    rad_space: float = 0.5,
+    kol_gruppere = "Tenk på det siste brevet du fikk fra oss om AAP. Hva handlet brevet om?"):
+    # Sett høyde på rader i subplot
+    radhøyder = (df_in.groupby(kol_gruppere, observed = True)[spørsmål_liste]
+                .apply(lambda x: (~x.isna()).sum())
+                .apply(lambda x: (x != 0).sum())
+            )
+    radhøyder=(radhøyder/(2*radhøyder.max())).to_list()
+
+    num_rows = len(spørsmål_liste)
+    num_cols = bool_vis_gjennomsnitt + 1
+    rad_space = rad_space/(num_rows - 1) if rad_space != 0 else 0
+    subplot_titler_liste = [e for i in spørsmål_liste for e in [i, ""]][:-1] if bool_vis_gjennomsnitt else spørsmål_liste
+    # Initiere suplots
+    fig = make_subplots(
+        rows=num_rows,
+        cols=num_cols,
+        subplot_titles=(["<br>".join(textwrap.wrap(f, 60)) for f in subplot_titler_liste]),
+        #row_titles = (["<br>".join(textwrap.wrap(f, 15)) for f in subplot_titler]),
+        column_titles = ["<b><i>Histogram</i></b>", "<b><i>Gjennomsnitt</i></b>"]*bool_vis_gjennomsnitt,
+        shared_xaxes=True,
+        shared_yaxes = "rows",
+        row_heights = radhøyder,
+        vertical_spacing = rad_space
+    )
+    return fig, num_rows,  num_cols
+```
+
+
+Sist oppdatert `{python} today`.
+
+```{python}
+#| echo: false
+#| label: import-data
+
+data_raw = pd.read_csv("data/new/survey.csv")
+df_clean, df_kodebok = src.data_clean.pre_process(data_raw)
+```
+
+
+```{python}
+#| echo: false
+#| label: load-data-summaries
+
+
+df_Likert, df_JaNei, df_Tidsbruk = src.lag_oppsummering.func_oppsummer_data(
+        data= df_clean, 
+        kodebok = df_kodebok, 
+        gruppering_etter_kolonne = "Tenk på det siste brevet du fikk fra oss om AAP. Hva handlet brevet om?")
+
+```
+
+
+# Når kom svarene inn?
+## Totalt `{python} df_clean.shape[0]` svar per `{python} datetime.date.today().strftime('%Y-%m-%d')`
+
+
+```{python}
+df = df_clean
+fig = make_subplots(specs=[[{"secondary_y": True}]])
+fig.add_trace(
+    go.Histogram(
+        x=df["complete"], 
+        cumulative_enabled=True,
+        opacity = 0.75,
+        name="Kumulativ sum",
+        legendrank = 2
+    
+        ),
+    secondary_y = True)
+fig.add_annotation(
+    yref="y2",
+    x=df.loc[df.shape[0],"complete"], y=df.shape[0],
+    text=f"{datetime.date.today()}: {df.shape[0]} svar på TasAnalytics",
+    showarrow=False,
+    xshift=-130,
+    yshift = 10,
+    secondary_y = True
+    )
+fig.add_trace(
+    go.Histogram(
+        x=df["complete"], 
+        histfunc="sum",
+        opacity = 1,
+        name = "Antall svar per uke",
+        legendrank = 1
+    ),
+    
+    secondary_y = False)
+
+
+fig.update_traces(
+    xbins_size=604800000,#ukentlig
+    )
+
+fig.update_xaxes(
+    showgrid=True, 
+    ticklabelmode="period", 
+    dtick="M1", 
+    tickformat="%d %b \n%Y")
+fig.update_layout(barmode='overlay')
+fig['layout']['yaxis2']['showgrid'] = False
+
+fig.show()
+```
+
+# Fordeling på ulike brevtyper
+
+```{python}
+df = df_clean
+fig = px.histogram(
+    df, 
+    x="Tenk på det siste brevet du fikk fra oss om AAP. Hva handlet brevet om?", 
+    #title = "Tenk på det siste brevet du fikk fra oss om AAP. Hva handlet brevet om?", 
+    text_auto = True)
+fig.layout["yaxis"].update(title= {'text': 'Antall svar'})
+fig.layout["xaxis"].update(title= {'text': 'Brevkategori'})
+fig.show()
+```
+
+# Svarprosent per brevkategori
+NB: Scroll mot høyre for å se alle brevkategorier
+```{python}
+df = pd.concat([
+    df_Likert[
+        ["Mangler svar", "Totalt svar", "Spørsmål", "SpørsmålNummer", "Tenk på det siste brevet du fikk fra oss om AAP. Hva handlet brevet om?"
+        ]],
+    df_JaNei[
+        ["Mangler svar", "Totalt svar", "Spørsmål", "SpørsmålNummer", "Tenk på det siste brevet du fikk fra oss om AAP. Hva handlet brevet om?"
+        ]],
+    df_Tidsbruk[
+        ["Mangler svar", "Totalt svar", "Spørsmål", "SpørsmålNummer", "Tenk på det siste brevet du fikk fra oss om AAP. Hva handlet brevet om?"
+        ]]
+    ]).sort_values("SpørsmålNummer", ascending = True).reset_index()
+
+df.loc[(df["Tenk på det siste brevet du fikk fra oss om AAP. Hva handlet brevet om?"] == "<i>Total, alle brevtyper</i>"), "Mangler svar"] -= 450
+df["SvarProsent"] = 1- df["Mangler svar"]/(df["Mangler svar"] + df["Totalt svar"])
+
+
+df["SpørsmålPlot"] = ["<br>".join(textwrap.wrap(f, 40)) for f in df["Spørsmål"]]
+drop_index = df.loc[
+    (df["Spørsmål"].isin(
+                    [
+                        'Jeg forstår hva jeg må gjøre for å få utbetalt AAP etter å ha lest brevet',
+                        'Jeg forstår hvor lenge jeg mottar AAP etter å ha lest brevet'
+                    ]
+                    )) &
+    (df["Tenk på det siste brevet du fikk fra oss om AAP. Hva handlet brevet om?"] == "<i>Total, alle brevtyper</i>"),["SvarProsent"]].index
+df.drop(index = drop_index, axis = 0, inplace = True)
+fig = px.bar(
+    df, 
+    x="SvarProsent", 
+    y="SpørsmålPlot",
+    color = "Tenk på det siste brevet du fikk fra oss om AAP. Hva handlet brevet om?",
+    facet_col="Tenk på det siste brevet du fikk fra oss om AAP. Hva handlet brevet om?",
+    facet_row="Spørsmål",
+    text_auto='.1%',
+    #hovertemplate = "Svarprosent: %{x:.1s}"
+    category_orders={
+        "Tenk på det siste brevet du fikk fra oss om AAP. Hva handlet brevet om?": 
+            [
+                'Ingen av disse', 
+                'Jeg fikk innvilget AAP', 
+                'Jeg fikk forlenget AAP',
+                'NAV ba om flere opplysninger',
+                'Jeg fikk avslag på AAP',  
+                '<i>Total, alle brevtyper</i>'
+            ]},
+    
+    #textposition="middle center",
+    #textfont={"size":10, "color":"white"},
+
+    )
+
+    # Finn hvordan du kan sortere etter spørsmålsnummer i plottet. Jeg vil se drop off raten.
+
+fig.update_layout(
+                    height=800,
+                    width=1500,
+                    margin = {
+                        "t": 100,
+                        "r": 250
+                    },
+                    legend = {"title": {"text":'Brevtype'}},
+                    showlegend = False
+                    
+                    )
+fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
+#fig.for_each_yaxis(lambda yaxis: yaxis.update(showticklabels=False))
+#fig.update_yaxes(showticklabels=False) 
+fig.update_xaxes(title = "", showticklabels = False)
+fig.update_yaxes(matches = None ,title = "")
+
+for annotation in fig['layout']['annotations']: 
+    annotation['textangle']= 0
+    if annotation["y"] != 1:
+        annotation["text"] = "<br>".join(textwrap.wrap(annotation["text"], 40))
+    else:
+        annotation['text'] = "<br>".join(textwrap.wrap(annotation['text'], 15))
+fig.show()
+
+```
+
+
+Merk: Her har vi tatt ut brevkategorien "Ingen av disse" når vi regner ut svarprosent. Det betyr at vi kan få >100% svar på første spørsmål, som "ingen av disse" også har svart på.
+
+Konklusjon: Høyere drop-off rate for alle andre brevtyper enn "innvilgelse" og "forlengelse".
+
+# Svar på alle spørsmål i undersøkelsen
+
+
+## Alle spørsmål med svarkategorier "Helt enig - helt uenig"
+```{python}
+#| out-width: 150%
+df_likert_plot = dropp_null_rader(df_Likert)
+Likert_spørsmål_liste = df_likert_plot["Spørsmål"].unique().tolist()
+
+fig_likert, nrows, ncols = initier_subplot(
+    spørsmål_liste=Likert_spørsmål_liste,
+    bool_vis_gjennomsnitt=True,
+    df_in = df_clean
+    )
+
+row_number = 0
+for spm in Likert_spørsmål_liste:
+    row_number += 1
+
+    ### Plott Likert spørsmålene:
+    traces_likert = src.utils.plot_likert(
+        spm = spm, 
+        data_oppsummert= df_likert_plot, 
+        kodebok=df_kodebok, 
+        gruppering_etter_kolonne = "Tenk på det siste brevet du fikk fra oss om AAP. Hva handlet brevet om?", 
+        plott_prosent = True, 
+        showlegend_bool = True if row_number == 1 else False)
+    fig_likert.add_traces(traces_likert, rows = row_number, cols = 1)
+
+    fig_likert.add_trace(
+                go.Scatter(
+                    x=df_likert_plot.loc[df_likert_plot["Spørsmål"] == spm,"mean"],
+                    y=df_likert_plot.loc[df_likert_plot["Spørsmål"] == spm, "Tenk på det siste brevet du fikk fra oss om AAP. Hva handlet brevet om?"],
+                    mode="markers+text",
+                    marker=dict(
+                        color="steelblue",
+                        size=18
+                    ),
+                    text=df_likert_plot.loc[df_likert_plot["Spørsmål"] == spm,"mean"].round(1),
+                    textposition="middle center",
+                    textfont={"size":10, "color":"white"},
+                    name=df_likert_plot["Tenk på det siste brevet du fikk fra oss om AAP. Hva handlet brevet om?"].values[0],
+                    hovertemplate = "%{x:.3s} ",
+                    showlegend=False
+                ),
+                row=row_number, col=2
+            )
+        
+#Dekorasjoner
+
+fig_likert.update_layout(barmode='relative', 
+                      height=200*nrows,
+                      width=500*ncols,
+                      #yaxis_autorange='reversed',
+                      #yaxis={'tickmode': 'array',
+                      #       "tickvals":df_filtered['Spørsmål'],
+                      #       "ticktext": ["<br>".join(textwrap.wrap(f, 25)) for f in df_filtered#['Spørsmål']],
+                      #       "minor_ticks": ""
+                      #          },
+                      bargap=0,
+                      legend_orientation ='h',
+
+                      legend = {
+                        "x":-0.3, 
+                        "y":1.07, 
+                        "groupclick":"togglegroup",
+                        'traceorder':'grouped'
+                      },
+                      margin = dict(
+                      #             l=150,
+                                   r=100,
+                                   t=100,
+                                   b=5
+                                   )
+
+                     )
+
+
+
+for i in range(nrows):
+    # oppdatere posisjon til titler
+    fig_likert.layout.annotations[i].update(x=0.5)
+    fig_likert.layout.annotations[i].update(font = {"size":14})
+    fig_likert.layout.annotations[i].update(font = {"size":14})
+
+
+
+#oppdatere synlighet av x-akser for kolonne 1
+for i in range(1, nrows*ncols, 2):
+    fig_likert.layout["xaxis" + str(i)].update(showticklabels = True)
+
+#oppdatere synlighet av x-akser for kolonne 2
+for i in range(2, nrows*ncols+1, 2):
+    fig_likert.layout["xaxis" + str(i)].update(
+        showticklabels = True, 
+        tickmode= "array",
+        tickvals= [k for k in range(1,6)],
+        ticktext= [f"{k+1} - {likert}" for k, likert in enumerate(['Helt<br>uenig', 'Uenig', 'Verken<br>eller', 'Enig', 'Helt<br>enig'])],
+        minor_ticks= "",
+        tickangle= 45
+    )
+#oppdatere synlighet av x-akser for kolonne 2
+for i in range(1, nrows*ncols+1, 2):
+    fig_likert.layout["xaxis" + str(i)].update(
+        showticklabels = True, 
+        tickmode= "array",
+        tickvals= [i for i in range(-100, 100, 25)],
+        ticktext= [str(np.abs(i)) + "%" for i in range(-100, 100, 25)],
+        minor_ticks= "inside",
+        title={"text":"Prosent"}
+     #   tickangle= 45
+    )
+
+fig_likert.layout["xaxis"].update(showticklabels = True)
+fig_likert.layout.annotations[nrows].update(y=1.02)
+fig_likert.layout.annotations[nrows + 1].update(y=1.02)
+
+fig_likert.show()
+```
+
+# Alle Ja/Nei spørsmål
+```{python}
+#| out-width: 100%
+df_plot = dropp_null_rader(df_JaNei)
+spørsmål_liste = df_plot["Spørsmål"].unique().tolist()
+
+fig_likert, nrows, ncols = initier_subplot(
+    spørsmål_liste=spørsmål_liste,
+    bool_vis_gjennomsnitt=False,
+    df_in = df_clean,
+    rad_space = 0.2
+    )
+
+row_number = 0
+for spm in spørsmål_liste:
+    row_number += 1
+
+    ### Plott Likert spørsmålene:
+    traces_likert = src.utils.plot_likert(
+        spm = spm, 
+        data_oppsummert= df_plot, 
+        kodebok=df_kodebok, 
+        gruppering_etter_kolonne = "Tenk på det siste brevet du fikk fra oss om AAP. Hva handlet brevet om?", 
+        plott_prosent = True, 
+        showlegend_bool = True if row_number == 1 else False)
+    fig_likert.add_traces(traces_likert, rows = row_number, cols = 1)
+#Dekorasjoner
+
+fig_likert.update_layout(barmode='relative', 
+                      height=250*nrows,
+                      width=600*ncols,
+                      #yaxis_autorange='reversed',
+                      #yaxis={'tickmode': 'array',
+                      #       "tickvals":df_filtered['Spørsmål'],
+                      #       "ticktext": ["<br>".join(textwrap.wrap(f, 25)) for f in df_filtered#['Spørsmål']],
+                      #       "minor_ticks": ""
+                      #          },
+                      bargap=0,
+                      legend_orientation ='h',
+
+                      legend = {
+                        "x":-0.1, 
+                        "y":1.09, 
+                        "groupclick":"togglegroup",
+                        'traceorder':'grouped'
+                      },
+                      margin = dict(
+                      #             l=150,
+                                   r=100,
+                                   t=100,
+                                   b=5
+                                   )
+
+                     )
+
+
+
+for i in range(nrows):
+    # oppdatere posisjon til titler
+    fig_likert.layout.annotations[i].update(x=0.5)
+    fig_likert.layout.annotations[i].update(font = {"size":14})
+    fig_likert.layout.annotations[i].update(font = {"size":14})
+
+
+
+#oppdatere synlighet av x-akser for kolonne 1
+for i in range(1, nrows*ncols, ncols):
+    fig_likert.layout["xaxis" + str(i)].update(showticklabels = True)
+#oppdatere synlighet av x-akser for kolonne 1
+for i in range(1, nrows*ncols+1, ncols):
+        fig_likert.layout["xaxis" + str(i)].update(
+            showticklabels = True, 
+            tickmode= "array",
+            tickvals= [i for i in range(-100, 100, 25)],
+            ticktext= [str(np.abs(i)) + "%" for i in range(-100, 100, 25)],
+            minor_ticks= "",
+            title={"text":"Prosent"}
+         #   tickangle= 45
+        )
+if ncols == 2:
+    #oppdatere synlighet av x-akser for kolonne 2
+    for i in range(2, nrows*ncols+1, 2):
+        fig_likert.layout["xaxis" + str(i)].update(
+            showticklabels = True, 
+            tickmode= "array",
+            tickvals= [k for k in range(1,6)],
+            ticktext= [f"{k+1} - {likert}" for k, likert in enumerate   (['Helt<br>uenig', 'Uenig', 'Verken<br>eller', 'Enig',     'Helt<br>enig'])],
+            minor_ticks= "",
+            tickangle= 45
+        )
+
+fig_likert.layout["xaxis"].update(showticklabels = True)
+if ncols == 2:
+    fig_likert.layout.annotations[nrows].update(y=1.02)
+    fig_likert.layout.annotations[nrows + 1].update(y=1.02)
+
+fig_likert.show()
+```
+
+# Spørsmål om tidsbruk
+```{python}
+
+df_plot = dropp_null_rader(df_Tidsbruk)
+spørsmål_liste = df_plot["Spørsmål"].unique().tolist()
+
+fig_likert, nrows, ncols = initier_subplot(
+    spørsmål_liste=spørsmål_liste,
+    bool_vis_gjennomsnitt=True,
+    df_in = df_clean,
+    rad_space = 0 
+    )
+fig = go.Figure()
+row_number = 0
+for spm in spørsmål_liste:
+    row_number += 1
+
+    ### Plott Likert spørsmålene:
+    traces_likert = src.utils.plot_likert(
+        spm = spm, 
+        data_oppsummert= df_plot, 
+        kodebok=df_kodebok, 
+        gruppering_etter_kolonne = "Tenk på det siste brevet du fikk fra oss om AAP. Hva handlet brevet om?", 
+        plott_prosent = True, 
+        showlegend_bool = True if row_number == 1 else False)
+    fig_likert.add_traces(traces_likert, rows = row_number, cols = 1)
+    
+    fig_likert.add_trace(
+                go.Scatter(
+                    x=df_plot.loc[df_plot["Spørsmål"] == spm,"mean"],
+                    y=df_plot.loc[df_plot["Spørsmål"] == spm, "Tenk på det siste brevet du fikk fra oss om AAP. Hva handlet brevet om?"],
+                    mode="markers+text",
+                    marker=dict(
+                        color="steelblue",
+                        size=18
+                    ),
+                    text=df_plot.loc[df_plot["Spørsmål"] == spm,"mean"].round(1),
+                    textposition="middle center",
+                    textfont={"size":10, "color":"white"},
+                    name=df_plot["Tenk på det siste brevet du fikk fra oss om AAP. Hva handlet brevet om?"].values[0],
+                    hovertemplate = "%{x:.3s} ",
+                    showlegend=False
+                ),
+                row=row_number, col=2
+            )
+
+#Dekorasjoner
+
+fig_likert.update_layout(
+                      barmode='relative', 
+                      height=350*nrows,
+                      width=500*ncols,
+                      #yaxis_autorange='reversed',
+                      #yaxis={'tickmode': 'array',
+                      #       "tickvals":df_filtered['Spørsmål'],
+                      #       "ticktext": ["<br>".join(textwrap.wrap(f, 25)) for f in df_filtered#['Spørsmål']],
+                      #       "minor_ticks": ""
+                      #          },
+                      bargap=0,
+                      legend_orientation ='h',
+
+                      legend = {
+                        "x":-0.1, 
+                        "y":1.7, 
+                        "groupclick":"togglegroup",
+                        'traceorder':'grouped'
+                      },
+                      margin = dict(
+                      #             l=150,
+                                   r=100,
+                                   t=100,
+                                   b=5
+                                   )
+
+                     )
+
+
+
+for i in range(nrows):
+    # oppdatere posisjon til titler
+    fig_likert.layout.annotations[i].update(x=0.5)
+    fig_likert.layout.annotations[i].update(font = {"size":14})
+    fig_likert.layout.annotations[i].update(font = {"size":14})
+
+
+
+#oppdatere synlighet av x-akser for kolonne 1
+for i in range(1, nrows*ncols, ncols):
+    fig_likert.layout["xaxis" + str(i)].update(showticklabels = True)
+#oppdatere synlighet av x-akser for kolonne 1
+for i in range(1, nrows*ncols+1, ncols):
+        fig_likert.layout["xaxis" + str(i)].update(
+            showticklabels = True, 
+            tickmode= "array",
+            tickvals= [i for i in range(-100, 100, 25)],
+            ticktext= [str(np.abs(i)) + "%" for i in range(-100, 100, 25)],
+            minor_ticks= "",
+            title={"text":"Prosent"}
+         #   tickangle= 45
+        )
+if ncols == 2:
+    #oppdatere synlighet av x-akser for kolonne 2
+    for i in range(2, nrows*ncols+1, 2):
+        fig_likert.layout["xaxis" + str(i)].update(
+            showticklabels = True, 
+            tickmode= "array",
+            tickvals= [k for k in range(1,6)],
+            ticktext= [f"{k+1} - {likert}" for k, likert in enumerate   (['Helt<br>uenig', 'Uenig', 'Verken<br>eller', 'Enig',     'Helt<br>enig'])],
+            minor_ticks= "",
+            tickangle= 45
+        )
+
+fig_likert.layout["xaxis"].update(showticklabels = True)
+if ncols == 2:
+    fig_likert.layout.annotations[nrows].update(y=1.1)
+    fig_likert.layout.annotations[nrows + 1].update(y=1.1)
+fig_likert.show()
+```
+
+# 
