@@ -3,8 +3,25 @@ title: "Deskriptiv analyse med Python"
 format:
   html:
     code-fold: False
+    toc: true
+    #embed-resources: true
     echo: False
     plotly-connected: true
+  pdf:
+    toc: true
+    toc-depth: 2
+    number-sections: true
+    #embed-resources: true
+    #colorlinks: true
+    #code-tools: true # Noen kodealternativer
+    code-fold: False
+    echo: False
+    plotly-connected: true
+    documentclass: scrreprt
+    #df-print: default
+    #output-file: "TaskAnalytics Brev 2024/2025"
+    output-ext:  "pdf"
+
 ---
 
 
@@ -610,4 +627,10 @@ if ncols == 2:
 fig_likert.show()
 ```
 
-# 
+<!-- for å vise plott i pdf:
+import kaleido
+from IPython.display import Image
+img = fig_likert.to_image(format = "png")
+Image(img)
+-->
+
