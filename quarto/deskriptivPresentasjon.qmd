@@ -408,7 +408,7 @@ fig_likert.layout.annotations[nrows + 1].update(y=1.02)
 fig_likert.show()
 ```
 
-# Alle Ja/Nei spørsmål
+## Alle Ja/Nei spørsmål
 ```{python}
 #| out-width: 100%
 df_plot = dropp_null_rader(df_JaNei)
@@ -507,7 +507,7 @@ if ncols == 2:
 fig_likert.show()
 ```
 
-# Spørsmål om tidsbruk
+## Spørsmål om tidsbruk
 ```{python}
 
 df_plot = dropp_null_rader(df_Tidsbruk)
