@@ -59,7 +59,7 @@ def dropp_null_rader(df):
 
 
 def initier_subplot(
-    spørsmål_liste, 
+    spørsmål_liste: list, 
     df_in:pd.DataFrame,
     bool_vis_gjennomsnitt: bool = True,
     rad_space: float = 0.5,
@@ -115,7 +115,7 @@ df_Likert, df_JaNei, df_Tidsbruk = src.lag_oppsummering.func_oppsummer_data(
 ```
 
 
-# Når kom svarene inn?
+# Når har brukere svart på spørsmålene?
 ## Totalt `{python} df_clean.shape[0]` svar per `{python} datetime.date.today().strftime('%Y-%m-%d')`
 
 
